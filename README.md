@@ -54,7 +54,13 @@ bash tools/dist_train.sh
 bash tools/dist_test.sh 
 ```
 ## Comparison with Baselines
-
+#### FP32
+| Method            | mAP      | NDS     | FPS    |Mem (MB) |   Model | Log
+|--------|----------|---------|--------|-------------|-----|-------|
+| [**BEVDet-R50**](configs/bevdet/bevdet-r50.py)       | 29.9     | 37.7    | 16.7   | 5,007  | - | -
+| [**BEVDepth-R50***](configs/bevdepth/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVMap-R50(BEVDet)***](configs/bevmap/bevmap-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVMap-R50(BEVDepth)***](configs/bevmap/bevmap-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
 
 
 ## Acknowledgement 
