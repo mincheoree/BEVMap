@@ -31,6 +31,19 @@ ln -s [nuscenes root] ./data/
 python tools/create_data.py nuscenes --root-path ./data/nuscenes --out-dir ./data/nuscenes --extra-tag nuscenes
 ```
 
+Also download nuscenes map expansion and locate your data folders as following: 
+```
+|-- data
+|---|--- nuscenes
+|---|---|--- v1.0-trainval/mini 
+|---|---|--- samples 
+|---|---|--- sweeps
+|---|---|--- maps 
+|---|---|---|--- basemap 
+|---|---|---|--- boston-seaport.json
+|---|---|---|--- ...
+```
+
 ## Map Dataset Generation
 We provide codes for generating map projections and BEV map mask for every sample in [nuScenes](https://www.nuscenes.org/?externalData=all&mapData=all&modalities=Any) dataset. 
 
