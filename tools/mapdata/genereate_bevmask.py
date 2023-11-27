@@ -3,7 +3,6 @@ from tqdm import tqdm
 import numpy as np
 import cv2
 import os 
-import pdb
 from nuscenes.utils.data_classes import Box
 from nuscenes import NuScenes
 from nuscenes.map_expansion.map_api import NuScenesMap
@@ -20,7 +19,7 @@ def get_rot(h):
     ])
 
 
-def get_binmap(nusc, nusc_maps, rec, layer_names, line_names, coord_type):
+def get_binmap(nusc, nusc_maps, rec, layer_names, coord_type):
         bx = np.array([-49.75,-49.75])
         dx = np.array([0.5,0.5])
         sample = nusc.get('sample_data', rec['data']['LIDAR_TOP'])
@@ -82,6 +81,7 @@ def get_binmap(nusc, nusc_maps, rec, layer_names, line_names, coord_type):
                             pts = np.round((interiors - bx)/dx).astype(np.int32)    
                             ptsi.append(pts)
                         cv2.fillPoly(mask, ptsi, 0.0)
+
             masks.append(mask)           
         return np.array(masks)
 
@@ -115,12 +115,12 @@ if __name__ == '__main__':
         log = nusc.get('log', rec['log_token'])
         scene2map[rec['name']] = log['location']
     layer_names = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area']
-    line_names = ['road_divider', 'lane_divider']
+    # line_names = ['road_divider', 'lane_divider']
 
     if category == 'all':
         for sample in tqdm(nusc.sample): 
         
-            map = get_binmap(nusc, nusc_maps, sample, layer_names, line_names, coord)
+            map = get_binmap(nusc, nusc_maps, sample, layer_names, coord)
             index = sample['data']['LIDAR_TOP']
             os.makedirs(os.path.join(dataroot, 'bevmap', str(index)))
             for i in range(map.shape[0]):
@@ -128,15 +128,16 @@ if __name__ == '__main__':
                 cv2.imwrite(os.path.join(dataroot, 'bevmap', str(index), f'{str(i)}.png'), single_mask.astype(np.uint8))
     else: 
         # get certain categories
-        i = (layer_names + line_names).index(category)
+        i = (layer_names).index(category)
         os.makedirs(os.path.join(dataroot, 'bevmap'))
         for sample in tqdm(nusc.sample): 
-            map = get_binmap(nusc, nusc_maps, sample, layer_names, line_names, coord)
+            map = get_binmap(nusc, nusc_maps, sample, layer_names, coord)
             index = sample['data']['LIDAR_TOP']
             single_mask = map[i] * 255
-  
-            cv2.imwrite(os.path.join(dataroot, 'bevmap', f'{str(index)}.png'), single_mask.astype(np.uint8))
-            
+            # cv2.imwrite(os.path.join(dataroot, 'bevmap', f'{str(index)}.png'), single_mask.astype(np.uint8))
+            cv2.imwrite(os.path.join('resources',  f'{str(index)}.png'), single_mask.astype(np.uint8))
+            import pdb; pdb.set_trace()
+
         
 
             

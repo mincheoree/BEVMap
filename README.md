@@ -58,6 +58,9 @@ python tools/mapdata/generate_bevmask.py --coord 'lidar' --category 'drivable_ar
 
 __Note__: We design the framework on master branch of [BEVDet](https://github.com/HuangJunJie2017/BEVDet/tree/master), which generates BEV features on LiDAR coordinates. However, recent dev2.0 branch creates BEV coordinates on egopose system, so map images should have corresponding coordinate transform too. 
 
+BEV Map on Ego Pose             |  BEV Map on LiDAR
+:-------------------------:|:-------------------------:
+![im1](resources/ego.png)|![im2](resources/lidar.png)
 
 
 ## Train 
