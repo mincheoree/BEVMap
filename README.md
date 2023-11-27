@@ -48,10 +48,12 @@ Also download nuscenes map expansion and locate your data folders as following:
 We provide codes for generating map projections and BEV map mask for every sample in [nuScenes](https://www.nuscenes.org/?externalData=all&mapData=all&modalities=Any) dataset. 
 
 ### Perspective View Map (RGB + Depth) Generation
+```
+```
 
 ### BEV Mask Generation 
 ```
-python tools/mapdata/generate_bevmask.py --coord lidar
+python tools/mapdata/generate_bevmask.py --coord 'lidar' --category 'drivable_area'
 ```
 
 __Note__: We design the framework on master branch of [BEVDet](https://github.com/HuangJunJie2017/BEVDet/tree/master), which generates BEV features on LiDAR coordinates. However, recent dev2.0 branch creates BEV coordinates on egopose system, so map images should have corresponding coordinate transform too. 
