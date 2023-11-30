@@ -12,12 +12,12 @@ from pyquaternion import Quaternion
 from nuscenes.utils.geometry_utils import transform_matrix
 import argparse
 
-def get_rot(h):
-    return np.array([
-        [np.cos(h), np.sin(h)],
-        [-np.sin(h), np.cos(h)],
-    ])
 
+def gen_dx_bx(xbound, ybound, zbound):
+    dx = np.array([row[2] for row in [xbound, ybound, zbound]])
+    bx = np.array([row[0] + row[2] / 2.0 for row in [xbound, ybound, zbound]])
+    nx = np.array([(row[1] - row[0]) / row[2] for row in [xbound, ybound, zbound]])
+    return dx, bx, nx
 
 def get_binmap(nusc, nusc_maps, rec, layer_names, coord_type):
         bx = np.array([-49.75,-49.75])
@@ -134,9 +134,8 @@ if __name__ == '__main__':
             map = get_binmap(nusc, nusc_maps, sample, layer_names, coord)
             index = sample['data']['LIDAR_TOP']
             single_mask = map[i] * 255
-            # cv2.imwrite(os.path.join(dataroot, 'bevmap', f'{str(index)}.png'), single_mask.astype(np.uint8))
-            cv2.imwrite(os.path.join('resources',  f'{str(index)}.png'), single_mask.astype(np.uint8))
-            import pdb; pdb.set_trace()
+            cv2.imwrite(os.path.join(dataroot, 'bevmap', f'{str(index)}.png'), single_mask.astype(np.uint8))
+         
 
         
 

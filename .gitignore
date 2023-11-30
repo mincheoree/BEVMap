@@ -137,5 +137,10 @@ data/sunrgbd/OFFICIAL_SUNRGBD/
 *.obj
 *.ply
 
+# map 
+projmap/
+projdepth/
+bevmap/
+
 # Waymo evaluation
 mmdet3d/core/evaluation/waymo_utils/compute_detection_metrics_main

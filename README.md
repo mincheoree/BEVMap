@@ -17,6 +17,7 @@ pip install lyft_dataset_sdk
 pip install nuscenes-devkit==1.0.5
 pip install numpy==1.20.3
 pip install yapf==0.40.1
+pip install shapely==1.8.5
 ```
 
 ### Data Preparation
@@ -82,6 +83,7 @@ bash tools/dist_test.sh
 
 
 ## Acknowledgement 
+Special thanks to Siyeong Lee from NAVER LABS for implementation of map generation codes.
 
 Our code is based on master branch of [BEVDet](https://github.com/HuangJunJie2017/BEVDet/tree/master). We thank and appreciate BEVDet teams for their great work. 
 
