@@ -12,10 +12,6 @@ from ..core import show_result
 from ..core.bbox import Box3DMode, Coord3DMode, LiDARInstance3DBoxes
 from .custom_3d import Custom3DDataset
 from .pipelines import Compose
-from nuscenes.nuscenes import NuScenes
-import os 
-from PIL import Image
-
 
 
 @DATASETS.register_module()
@@ -150,7 +146,6 @@ class NuScenesDataset(Custom3DDataset):
             filter_empty_gt=filter_empty_gt,
             test_mode=test_mode)
 
-        
         self.with_velocity = with_velocity
         self.eval_version = eval_version
         from nuscenes.eval.detection.config import config_factory
@@ -174,10 +169,6 @@ class NuScenesDataset(Custom3DDataset):
         self.test_adj = test_adj
         self.fix_direction = fix_direction
         self.test_adj_ids = test_adj_ids
-        self.map_root = '../mapdataset'
-        self.nusc = NuScenes(version='v1.0-{}'.format('trainval'),
-                    dataroot='data/nuscenes',
-                    verbose=False)
 
     def get_cat_ids(self, idx):
         """Get category distribution of single scene.
@@ -238,7 +229,6 @@ class NuScenesDataset(Custom3DDataset):
                     from lidar to different cameras.
                 - ann_info (dict): Annotation info.
         """
-        
         info = self.data_infos[index]
         # standard protocal modified from SECOND.Pytorch
         input_dict = dict(
@@ -247,13 +237,6 @@ class NuScenesDataset(Custom3DDataset):
             sweeps=info['sweeps'],
             timestamp=info['timestamp'] / 1e6,
         )
-        
-        # if self.modality['use_map']:
-        #     input_dict.update(
-        #         dict(
-                    
-        #         )
-        #     )
 
         if self.modality['use_camera']:
             if self.img_info_prototype == 'mmcv':
@@ -273,7 +256,6 @@ class NuScenesDataset(Custom3DDataset):
                     viewpad[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
                     lidar2img_rt = (viewpad @ lidar2cam_rt.T)
                     lidar2img_rts.append(lidar2img_rt)
-                    
 
                 input_dict.update(
                     dict(
@@ -282,34 +264,6 @@ class NuScenesDataset(Custom3DDataset):
                     ))
             elif self.img_info_prototype == 'bevdet':
                 input_dict.update(dict(img_info=info['cams']))
-                proj_paths = {} 
-                depth_paths = {}
-              
-                fbev = info['token']
-                for cam_type, cam_info in info['cams'].items():
-                    
-                    fname = self.nusc.get('sample_data', cam_info['sample_data_token'])['ego_pose_token']
-                    # proj = os.path.join('../lift-splat-shoot_modified/rendered_polygon2', cam_type, f'{fname}.jpg')
-                    # depth = os.path.join('../BEVDepth_modified/depth', cam_type, f'{fname}.npy')
-                    # test data
-                    
-                    proj = os.path.join(self.map_root, 'projmap', cam_type, f'{fname}.jpg')
-                    depth = os.path.join(self.map_root, 'depth', cam_type, f'{fname}.npy')
-
-                    proj_paths[cam_type] = proj 
-                    depth_paths[cam_type] = depth
-                bev_path = os.path.join(self.map_root, 'bevmap', f'{fbev}.png')
-                input_dict.update(dict(
-                    proj = proj_paths,
-                    depth = depth_paths, 
-                    bev = bev_path
-                    ))
-                
-                    # self.nusc.get('sample_data', )
-                
-                # input_dict.update(dict( 
-                #     proj_map = 
-                #     ))
             elif self.img_info_prototype == 'bevdet_sequential':
                 if info ['prev'] is None or info['next'] is None:
                     adjacent= 'prev' if info['next'] is None else 'next'
@@ -362,7 +316,6 @@ class NuScenesDataset(Custom3DDataset):
                 input_dict['ann_info']['gt_bboxes_3d'] = LiDARInstance3DBoxes(bbox,
                                                                               box_dim=bbox.shape[-1],
                                                                               origin=(0.5, 0.5, 0.0))
-        
         return input_dict
 
     def get_ann_info(self, index):

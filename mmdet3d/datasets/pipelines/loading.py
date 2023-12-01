@@ -10,8 +10,6 @@ from mmdet3d.core.points import BasePoints, get_points_type
 from mmdet.datasets.builder import PIPELINES
 from mmdet.datasets.pipelines import LoadAnnotations, LoadImageFromFile
 
-from nuscenes.utils.geometry_utils import view_points
-
 
 @PIPELINES.register_module()
 class PointToMultiViewDepth(object):
@@ -152,64 +150,6 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
             [-np.sin(h), np.cos(h)],
         ])
 
-    def depth_transform(self,cam_depth, resize, resize_dims, crop, flip, rotate):
-        """Transform depth based on ida augmentation configuration.
-
-        Args:
-            cam_depth (np array): Nx3, 3: x,y,d.
-            resize (float): Resize factor.
-            resize_dims (list): Final dimension.
-            crop (list): x1, y1, x2, y2
-            flip (bool): Whether to flip.
-            rotate (float): Rotation value.
-
-        Returns:
-            np array: [h/down_ratio, w/down_ratio, d]
-        """
-
-        H, W = resize_dims
-        cam_depth[:, :2] = cam_depth[:, :2] * resize
-        cam_depth[:, 0] -= crop[0]
-        cam_depth[:, 1] -= crop[1]
-        if flip:
-            cam_depth[:, 0] = resize_dims[1] - cam_depth[:, 0]
-
-        cam_depth[:, 0] -= W / 2.0
-        cam_depth[:, 1] -= H / 2.0
-
-        h = rotate / 180 * np.pi
-        rot_matrix = [
-            [np.cos(h), np.sin(h)],
-            [-np.sin(h), np.cos(h)],
-        ]
-        cam_depth[:, :2] = np.matmul(rot_matrix, cam_depth[:, :2].T).T
-
-        cam_depth[:, 0] += W / 2.0
-        cam_depth[:, 1] += H / 2.0
-
-        depth_coords = cam_depth[:, :2].astype(np.int16)
-
-        depth_map = np.zeros(resize_dims)
-        valid_mask = ((depth_coords[:, 1] < resize_dims[0])
-                    & (depth_coords[:, 0] < resize_dims[1])
-                    & (depth_coords[:, 1] >= 0)
-                    & (depth_coords[:, 0] >= 0))
-        depth_map[depth_coords[valid_mask, 1],
-                depth_coords[valid_mask, 0]] = cam_depth[valid_mask, 2]
-
-        return torch.Tensor(depth_map)
-
-
-    def map_transform(self, img, resize, resize_dims, crop, flip, rotate): 
-        # adjust image
-        img = img.resize(resize_dims)
-        img = img.crop(crop)
-        if flip:
-            img = img.transpose(method=Image.FLIP_LEFT_RIGHT)
-        img = img.rotate(rotate)
-
-        return img
-
     def img_transform(self, img, post_rot, post_tran,
                       resize, resize_dims, crop,
                       flip, rotate):
@@ -275,34 +215,208 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
             rotate = 0
         return resize, resize_dims, crop, flip, rotate
 
-    def bev_augmentation(self): 
-       
-        H, W = 800, 800 
-        fH, fW = 800, 800
-        if self.is_train:
-            resize = np.random.uniform(0.45, 0.55)
-            resize_dims = (int(W*resize), int(H*resize))
-            newW, newH = resize_dims
-            crop_h = int(np.random.uniform(0, max(0, newH - fH)))
-            crop_w = int(np.random.uniform(0, max(0, newW - fW)))
-            crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
-            flip = False
-            if self.data_config['flip'] and np.random.choice([0, 1]):
-                flip = True
-            rotate = np.random.uniform(*self.data_config['rot'])
-        else:
-            resize = max(fH/H, fW/W)
-            resize_dims = (int(W*resize), int(H*resize))
-            newW, newH = resize_dims
-            crop_h = int(max(0, newW - fW) / 2)
-            crop_w = int(max(0, newW - fW) / 2)
-            crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
-            flip = False
-            rotate = 0
-        
-        return resize, resize_dims, crop, flip, rotate
-
     def get_inputs(self,results, flip=None, scale=None):
+        imgs = []
+        rots = []
+        trans = []
+        intrins = []
+        post_rots = []
+        post_trans = []
+        cams = self.choose_cams()
+        for cam in cams:
+            cam_data = results['img_info'][cam]
+            filename = cam_data['data_path']
+            img = Image.open(filename)
+            post_rot = torch.eye(2)
+            post_tran = torch.zeros(2)
+
+            intrin = torch.Tensor(cam_data['cam_intrinsic'])
+            rot = torch.Tensor(cam_data['sensor2lidar_rotation'])
+            tran = torch.Tensor(cam_data['sensor2lidar_translation'])
+
+            # augmentation (resize, crop, horizontal flip, rotate)
+            resize, resize_dims, crop, flip, rotate = self.sample_augmentation(H=img.height,
+                                                                               W=img.width,
+                                                                               flip=flip,
+                                                                               scale=scale)
+            img, post_rot2, post_tran2 = self.img_transform(img, post_rot, post_tran,
+                                                            resize=resize,
+                                                            resize_dims=resize_dims,
+                                                            crop=crop,
+                                                            flip=flip,
+                                                            rotate=rotate)
+
+            # for convenience, make augmentation matrices 3x3
+            post_tran = torch.zeros(3)
+            post_rot = torch.eye(3)
+            post_tran[:2] = post_tran2
+            post_rot[:2, :2] = post_rot2
+
+            imgs.append(self.normalize_img(img))
+
+            if self.sequential:
+                assert 'adjacent' in results
+                if not type(results['adjacent']) is list:
+                    filename_adjacent = results['adjacent']['cams'][cam]['data_path']
+                    img_adjacent = Image.open(filename_adjacent)
+                    img_adjacent = self.img_transform_core(img_adjacent,
+                                                           resize_dims=resize_dims,
+                                                           crop=crop,
+                                                           flip=flip,
+                                                           rotate=rotate)
+                    imgs.append(self.normalize_img(img_adjacent))
+                else:
+                    for id in range(len(results['adjacent'])):
+                        filename_adjacent = results['adjacent'][id]['cams'][cam]['data_path']
+                        img_adjacent = Image.open(filename_adjacent)
+                        img_adjacent = self.img_transform_core(img_adjacent,
+                                                               resize_dims=resize_dims,
+                                                               crop=crop,
+                                                               flip=flip,
+                                                               rotate=rotate)
+                        imgs.append(self.normalize_img(img_adjacent))
+            intrins.append(intrin)
+            rots.append(rot)
+            trans.append(tran)
+            post_rots.append(post_rot)
+            post_trans.append(post_tran)
+
+        if self.sequential:
+            if self.trans_only:
+                if not type(results['adjacent']) is list:
+                    rots.extend(rots)
+                    post_trans.extend(post_trans)
+                    post_rots.extend(post_rots)
+                    intrins.extend(intrins)
+                    if self.aligned:
+                        posi_curr = np.array(results['curr']['ego2global_translation'], dtype=np.float32)
+                        posi_adj = np.array(results['adjacent']['ego2global_translation'], dtype=np.float32)
+                        shift_global = posi_adj - posi_curr
+
+                        l2e_r = results['curr']['lidar2ego_rotation']
+                        e2g_r = results['curr']['ego2global_rotation']
+                        l2e_r_mat = Quaternion(l2e_r).rotation_matrix
+                        e2g_r_mat = Quaternion(e2g_r).rotation_matrix
+
+                        # shift_global = np.array([*shift_global[:2], 0.0])
+                        shift_lidar = shift_global @ np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(
+                            l2e_r_mat).T
+                        trans.extend([tran + shift_lidar for tran in trans])
+                    else:
+                        trans.extend(trans)
+                else:
+                    assert False
+            else:
+                if not type(results['adjacent']) is list:
+                    post_trans.extend(post_trans)
+                    post_rots.extend(post_rots)
+                    intrins.extend(intrins)
+                    if self.aligned:
+                        egocurr2global = np.eye(4, dtype=np.float32)
+                        egocurr2global[:3,:3] = Quaternion(results['curr']['ego2global_rotation']).rotation_matrix
+                        egocurr2global[:3,3] = results['curr']['ego2global_translation']
+
+                        egoadj2global = np.eye(4, dtype=np.float32)
+                        egoadj2global[:3,:3] = Quaternion(results['adjacent']['ego2global_rotation']).rotation_matrix
+                        egoadj2global[:3,3] = results['adjacent']['ego2global_translation']
+
+                        lidar2ego = np.eye(4, dtype=np.float32)
+                        lidar2ego[:3, :3] = Quaternion(results['curr']['lidar2ego_rotation']).rotation_matrix
+                        lidar2ego[:3, 3] = results['curr']['lidar2ego_translation']
+
+                        lidaradj2lidarcurr = np.linalg.inv(lidar2ego) @ np.linalg.inv(egocurr2global) \
+                                             @ egoadj2global @ lidar2ego
+                        trans_new = []
+                        rots_new =[]
+                        for tran,rot in zip(trans, rots):
+                            mat = np.eye(4, dtype=np.float32)
+                            mat[:3,:3] = rot
+                            mat[:3,3] = tran
+                            mat = lidaradj2lidarcurr @ mat
+                            rots_new.append(torch.from_numpy(mat[:3,:3]))
+                            trans_new.append(torch.from_numpy(mat[:3,3]))
+                        rots.extend(rots_new)
+                        trans.extend(trans_new)
+                    else:
+                        rots.extend(rots)
+                        trans.extend(trans)
+                else:
+                    assert False
+        imgs, rots, trans, intrins, post_rots, post_trans = (torch.stack(imgs), torch.stack(rots), torch.stack(trans),
+                                                             torch.stack(intrins), torch.stack(post_rots),
+                                                             torch.stack(post_trans))
+        return imgs, rots, trans, intrins, post_rots, post_trans
+
+    def __call__(self, results):
+        results['img_inputs'] = self.get_inputs(results)
+        return results
+
+@PIPELINES.register_module()
+class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
+    """Load multi channel images, projmaps, depths, and bevmap from a list of separate channel files.
+
+    Expects results['img_filename'] to be a list of filenames.
+
+    Args:
+        to_float32 (bool): Whether to convert the img to float32.
+            Defaults to False.
+        color_type (str): Color type of the file. Defaults to 'unchanged'.
+    """
+
+    def __init__(self, data_config, is_train=False,
+                 sequential=False, aligned=False, trans_only=True):
+        super().__init__(data_config, is_train, sequential, aligned, trans_only)
+    
+    def depth_transform(self,cam_depth, resize, resize_dims, crop, flip, rotate):
+        """Transform depth based on ida augmentation configuration.
+
+        Args:
+            cam_depth (np array): Nx3, 3: x,y,d.
+            resize (float): Resize factor.
+            resize_dims (list): Final dimension.
+            crop (list): x1, y1, x2, y2
+            flip (bool): Whether to flip.
+            rotate (float): Rotation value.
+
+        Returns:
+            np array: [h/down_ratio, w/down_ratio, d]
+        """
+
+        H, W = resize_dims
+        cam_depth[:, :2] = cam_depth[:, :2] * resize
+        cam_depth[:, 0] -= crop[0]
+        cam_depth[:, 1] -= crop[1]
+        if flip:
+            cam_depth[:, 0] = resize_dims[1] - cam_depth[:, 0]
+
+        cam_depth[:, 0] -= W / 2.0
+        cam_depth[:, 1] -= H / 2.0
+
+        h = rotate / 180 * np.pi
+        rot_matrix = [
+            [np.cos(h), np.sin(h)],
+            [-np.sin(h), np.cos(h)],
+        ]
+        cam_depth[:, :2] = np.matmul(rot_matrix, cam_depth[:, :2].T).T
+
+        cam_depth[:, 0] += W / 2.0
+        cam_depth[:, 1] += H / 2.0
+
+        depth_coords = cam_depth[:, :2].astype(np.int16)
+
+        depth_map = np.zeros(resize_dims)
+        valid_mask = ((depth_coords[:, 1] < resize_dims[0])
+                    & (depth_coords[:, 0] < resize_dims[1])
+                    & (depth_coords[:, 1] >= 0)
+                    & (depth_coords[:, 0] >= 0))
+        depth_map[depth_coords[valid_mask, 1],
+                depth_coords[valid_mask, 0]] = cam_depth[valid_mask, 2]
+
+        return torch.Tensor(depth_map)
+
+
+    def get_inputs(self, results, flip=None, scale=None):
+
         imgs = []
         maps = []
         map_depth = []
@@ -314,14 +428,11 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
         cams = self.choose_cams()
         bevpath = results['bev']
         bev = Image.open(bevpath)
-        # bev = bev.transpose(method=Image.FLIP_TOP_BOTTOM)
         bev = torch.Tensor(np.array(bev)/255.0)
-        
         
         for cam in cams:
             cam_data = results['img_info'][cam]
             filename = cam_data['data_path']
-            
             img = Image.open(filename)
             
             ######
@@ -349,20 +460,17 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
                                                             crop=crop,
                                                             flip=flip,
                                                             rotate=rotate)
-            map = self.map_transform(
-                map, 
-                resize = resize, 
-                resize_dims = resize_dims,
-                crop=crop,
-                flip=flip,
-                rotate=rotate,
-            )
+            # apply the same augmenation to proj maps
+            map = self.img_transform_core(
+                                        map, 
+                                        resize_dims = resize_dims,
+                                        crop=crop,
+                                        flip=flip,
+                                        rotate=rotate,
+                                    )
 
-
-            ##### codes for test set
+   
         
-            #####
-
             map_depth_augmented = self.depth_transform(depth, resize, (256, 704), crop, flip, rotate)
 
 
@@ -375,7 +483,7 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
             imgs.append(self.normalize_img(img))
             maps.append(self.normalize_img(map))
             
-            map_depth.append(map_depth_augmented/70.0)
+            map_depth.append(map_depth_augmented/51.2)
 
             if self.sequential:
                 assert 'adjacent' in results
@@ -470,24 +578,17 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
                                                              torch.stack(intrins), torch.stack(post_rots),
                                                              torch.stack(post_trans), torch.stack(maps), torch.stack(map_depth))
         return imgs, rots, trans, intrins, post_rots, post_trans, maps, mapdepth, bev
-        # return imgs, rots, trans, intrins, post_rots, post_trans, mapdepth
-
+    
     def __call__(self, results):
         imgs, rots, trans, intrins, post_rots, post_trans, maps, mapdepth, bev = self.get_inputs(results)
         results['img_inputs'] = (imgs, rots, trans, intrins, post_rots, post_trans)
         results['proj'], results['depth'], results['bev'] = maps, mapdepth, bev
         return results
     
-    def __call__v1(self, results):
-        imgs, rots, trans, intrins, post_rots, post_trans, mapdepth = self.get_inputs(results)
-        results['img_inputs'] = (imgs, rots, trans, intrins, post_rots, post_trans)
-        results['depth'] = mapdepth
-        # results.pop('proj')
-        return results
-
 
 @PIPELINES.register_module()
 class LoadImageFromFileMono3D(LoadImageFromFile):
+
     """Load an image from file in monocular 3D object detection. Compared to 2D
     detection, additional camera parameters need to be loaded.
 

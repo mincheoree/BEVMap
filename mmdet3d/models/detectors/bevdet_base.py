@@ -57,6 +57,7 @@ class BEVDet(CenterPoint):
                       proposals=None,
                       gt_bboxes_ignore=None):
         """Forward training function.
+
         Args:
             points (list[torch.Tensor], optional): Points of each sample.
                 Defaults to None.
@@ -76,6 +77,7 @@ class BEVDet(CenterPoint):
                 used for training Fast RCNN. Defaults to None.
             gt_bboxes_ignore (list[torch.Tensor], optional): Ground truth
                 2D boxes in images to be ignored. Defaults to None.
+
         Returns:
             dict: Losses of different branches.
         """
@@ -399,6 +401,7 @@ class BEVDepth(BEVDepth_Base, BEVDet):
                       proposals=None,
                       gt_bboxes_ignore=None):
         """Forward training function.
+
         Args:
             points (list[torch.Tensor], optional): Points of each sample.
                 Defaults to None.
@@ -418,6 +421,7 @@ class BEVDepth(BEVDepth_Base, BEVDet):
                 used for training Fast RCNN. Defaults to None.
             gt_bboxes_ignore (list[torch.Tensor], optional): Ground truth
                 2D boxes in images to be ignored. Defaults to None.
+
         Returns:
             dict: Losses of different branches.
         """
@@ -520,6 +524,7 @@ class BEVDepth4D(BEVDepth_Base, BEVDetSequentialES):
                       proposals=None,
                       gt_bboxes_ignore=None):
         """Forward training function.
+
         Args:
             points (list[torch.Tensor], optional): Points of each sample.
                 Defaults to None.
@@ -539,6 +544,7 @@ class BEVDepth4D(BEVDepth_Base, BEVDetSequentialES):
                 used for training Fast RCNN. Defaults to None.
             gt_bboxes_ignore (list[torch.Tensor], optional): Ground truth
                 2D boxes in images to be ignored. Defaults to None.
+
         Returns:
             dict: Losses of different branches.
         """

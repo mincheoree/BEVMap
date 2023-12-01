@@ -50,6 +50,9 @@ We provide codes for generating map projections and BEV map mask for every sampl
 
 ### Perspective View Map (RGB + Depth) Generation
 ```
+python tools/mapdata/generate_projmap.py 
+python tools/mapdata/generate_projdepth.py 
+
 ```
 
 ### BEV Mask Generation 
@@ -83,7 +86,7 @@ bash tools/dist_test.sh
 
 
 ## Acknowledgement 
-Special thanks to Siyeong Lee from NAVER LABS for implementation of map generation codes.
+Special thanks to Siyeong Lee from [NAVER LABS](https://www.naverlabs.com/) for help with implementation of map generation codes and experimental feedbacks.
 
 Our code is based on master branch of [BEVDet](https://github.com/HuangJunJie2017/BEVDet/tree/master). We thank and appreciate BEVDet teams for their great work. 
 

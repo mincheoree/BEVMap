@@ -53,7 +53,8 @@ def render_depth_in_image(nusc,
                             alpha = 1.0,
                             patch_radius = 50.0, 
                             im_size = (1600, 900), 
-                            out_path = None
+                            out_path = None,
+                            dataroot = None
                             ):
      
         layer_names = ['road_segment', 'lane', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area']
@@ -75,8 +76,8 @@ def render_depth_in_image(nusc,
         ego_pose[1] + patch_radius,
     )
        
-        
-        bevmap = np.array(Image.open(f'bevmap/{sample_token}.png'))
+        bevpath = os.path.join(dataroot, f'bevmap/{sample_token}.png')
+        bevmap = np.array(Image.open(bevpath))
         points = get_coordinate_from_binarymap(bevmap) 
 
         # Convert bev map points to pointcloud with -1 height.
@@ -131,23 +132,21 @@ def render_depth_in_image(nusc,
         # ### get polygon
         # points = [(p0, p1) for (p0, p1) in zip(points[0], points[1])]
     
-        proj_range = np.full((900, 1600), -1,
-                              dtype=np.float32)
+        # proj_range = np.full((900, 1600), -1,
+        #                       dtype=np.float32)
         # clip depths to 51.2m 
         depths = np.minimum(depths, 51.2)
-        proj_range[np.floor(points[1]).astype(np.int32), np.floor(points[0]).astype(np.int32)] = depths
-
-        np.save(f'{out_path}', proj_range)
-        
-
+        # proj_range[np.floor(points[1]).astype(np.int32), np.floor(points[0]).astype(np.int32)] = depths
     
-        
+        depth_points = np.concatenate([points[:2].T, depths[:, None]], axis =1).astype(np.float32)
+
+        np.save(f'{out_path}', depth_points)
 
 
 if __name__ == '__main__': 
     parser = argparse.ArgumentParser(description="arg parser")
     args = parser.parse_args()
-    dataroot = 'data/nuscenes/v1.0-trainval'
+    dataroot = 'data/nuscenes'
 
     nusc_maps = get_nusc_maps(dataroot)
     nusc = NuScenes(version='v1.0-trainval', dataroot=dataroot, verbose=True)
@@ -159,14 +158,14 @@ if __name__ == '__main__':
 
     layer_names = ['road_segment', 'road_block', 'lane', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area']
     cams = ['CAM_FRONT', 'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT']
-
+    os.makedirs(os.path.join(dataroot, 'projdepth'))
     for cam in cams: 
-        os.makedirs(os.path.join('projdepth', cam))
+        os.makedirs(os.path.join(dataroot, 'projdepth', cam))
     for sample in tqdm(nusc.sample): 
         sample_token = sample['token']
         map_name = scene2map[nusc.get('scene', sample['scene_token'])['name']]
         nusc_map = nusc_maps[map_name]
         for cam in cams:
             cam_token = sample['data'][cam]
-            out_path = os.path.join('projdepth', cam, cam_token)
-            render_depth_in_image(nusc, nusc_map, sample_token = sample_token, camera_channel=cam, out_path = out_path)
+            out_path = os.path.join(dataroot, 'projdepth', cam, cam_token)
+            render_depth_in_image(nusc, nusc_map, sample_token = sample_token, camera_channel=cam, out_path = out_path, dataroot = dataroot)

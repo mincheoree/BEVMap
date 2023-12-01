@@ -12,8 +12,6 @@ from mmdet.datasets.builder import PIPELINES
 from mmdet.datasets.pipelines import RandomFlip
 from ..builder import OBJECTSAMPLERS
 from .data_augment_utils import noise_per_object_v3_
-import torchvision
-from torchvision.transforms import functional as F
 
 
 @PIPELINES.register_module()
@@ -150,16 +148,12 @@ class RandomFlip3D(RandomFlip):
         aug_transform = torch.eye(4).float()
         if input_dict['pcd_horizontal_flip']:
             aug_transform[1,1] = -1
-            input_dict['bev'] = F.vflip(input_dict['bev'])
         if input_dict['pcd_vertical_flip']:
             aug_transform[0,0] = -1
-            input_dict['bev'] = F.hflip(input_dict['bev'])
-
         aug_transform = aug_transform.view(1,4,4)
         new_transform = aug_transform.matmul(transform)
         input_dict['img_inputs'][1][...] = new_transform[:,:3,:3]
         input_dict['img_inputs'][2][...] = new_transform[:,:3,-1]
-        
 
 
     def __call__(self, input_dict):
@@ -176,7 +170,7 @@ class RandomFlip3D(RandomFlip):
         """
         # filp 2D image and its annotations
         super(RandomFlip3D, self).__call__(input_dict)
-      
+
         if self.sync_2d:
             input_dict['pcd_horizontal_flip'] = input_dict['flip']
             input_dict['pcd_vertical_flip'] = False
@@ -621,7 +615,7 @@ class GlobalRotScaleTrans(object):
         if len(input_dict['bbox3d_fields']) == 0:
             rot_mat_T = input_dict['points'].rotate(noise_rotation)
             input_dict['pcd_rotation'] = rot_mat_T
-            return noise_rotation
+            return
 
         # rotate points with bboxes
         for key in input_dict['bbox3d_fields']:
@@ -631,8 +625,6 @@ class GlobalRotScaleTrans(object):
                 input_dict['points'] = points
                 input_dict['pcd_rotation'] = rot_mat_T
 
-        return noise_rotation 
-    
     def _scale_bbox_points(self, input_dict):
         """Private function to scale bounding boxes and points.
 
@@ -703,7 +695,7 @@ class GlobalRotScaleTrans(object):
         if 'transformation_3d_flow' not in input_dict:
             input_dict['transformation_3d_flow'] = []
 
-        noise_rotation = self._rot_bbox_points(input_dict)
+        self._rot_bbox_points(input_dict)
 
         if 'pcd_scale_factor' not in input_dict:
             self._random_scale(input_dict)
@@ -715,9 +707,91 @@ class GlobalRotScaleTrans(object):
         if 'img_inputs' in input_dict:
             assert self.update_img2lidar
             self.update_transform(input_dict)
+        return input_dict
+
+    def __repr__(self):
+        """str: Return a string that describes the module."""
+        repr_str = self.__class__.__name__
+        repr_str += f'(rot_range={self.rot_range},'
+        repr_str += f' scale_ratio_range={self.scale_ratio_range},'
+        repr_str += f' translation_std={self.translation_std},'
+        repr_str += f' shift_height={self.shift_height})'
+        return repr_str
+
+import torchvision
+from torchvision.transforms import functional as F
+
+@PIPELINES.register_module()
+class GlobalRotScaleTrans_Map(GlobalRotScaleTrans):
+    """Apply global rotation, scaling and translation to a 3D scene.
+    """
+    def __init__(self,
+                 rot_range=[-0.78539816, 0.78539816],
+                 scale_ratio_range=[0.95, 1.05],
+                 translation_std=[0, 0, 0],
+                 shift_height=False,
+                 update_img2lidar=False):
+        
+        super().__init__(rot_range, scale_ratio_range, translation_std, shift_height, update_img2lidar)
+
+    def _rot_bbox_points(self, input_dict):
+        """Private function to rotate bounding boxes and points.
+
+        Args:
+            input_dict (dict): Result dict from loading pipeline.
+
+        Returns:
+            dict: Results after rotation, 'points', 'pcd_rotation' \
+                and keys in input_dict['bbox3d_fields'] are updated \
+                in the result dict.
+        """
+        rotation = self.rot_range
+        noise_rotation = np.random.uniform(rotation[0], rotation[1])
+
+        # if no bbox in input_dict, only rotate points
+        if len(input_dict['bbox3d_fields']) == 0:
+            rot_mat_T = input_dict['points'].rotate(noise_rotation)
+            input_dict['pcd_rotation'] = rot_mat_T
+            return noise_rotation
+
+        # rotate points with bboxes
+        for key in input_dict['bbox3d_fields']:
+            if len(input_dict[key].tensor) != 0:
+                points, rot_mat_T = input_dict[key].rotate(
+                    noise_rotation, input_dict['points'])
+                input_dict['points'] = points
+                input_dict['pcd_rotation'] = rot_mat_T
+
+        return noise_rotation 
+
+    def __call__(self, input_dict):
+        """Private function to rotate, scale and translate bounding boxes and \
+        points.
+
+        Args:
+            input_dict (dict): Result dict from loading pipeline.
+
+        Returns:
+            dict: Results after scaling, 'points', 'pcd_rotation',
+                'pcd_scale_factor', 'pcd_trans' and keys in \
+                input_dict['bbox3d_fields'] are updated in the result dict.
+        """
+        if 'transformation_3d_flow' not in input_dict:
+            input_dict['transformation_3d_flow'] = []
+
+        noise_rotation = self._rot_bbox_points(input_dict)
+      
+        if 'pcd_scale_factor' not in input_dict:
+            self._random_scale(input_dict)
+        self._scale_bbox_points(input_dict)
+
+        self._trans_bbox_points(input_dict)
+
+        input_dict['transformation_3d_flow'].extend(['R', 'S', 'T'])
+        if 'img_inputs' in input_dict:
+            assert self.update_img2lidar
+            self.update_transform(input_dict)
         if 'bev' in input_dict:
-            
-            # import pdb; pdb.set_trace()
             bev = input_dict['bev'].unsqueeze(0)
             bev = torchvision.transforms.functional.rotate(bev, angle = -noise_rotation/np.pi * 180) 
             input_dict['bev'] = bev
@@ -731,7 +805,6 @@ class GlobalRotScaleTrans(object):
         repr_str += f' translation_std={self.translation_std},'
         repr_str += f' shift_height={self.shift_height})'
         return repr_str
-
 
 @PIPELINES.register_module()
 class PointShuffle(object):

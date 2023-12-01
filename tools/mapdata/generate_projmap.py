@@ -192,13 +192,14 @@ if __name__ == '__main__':
     
     layer_names = ['road_segment', 'road_block', 'lane', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area']
     cams = ['CAM_FRONT', 'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT']
+    os.makedirs(os.path.join(dataroot, 'projmap'))
     for cam in cams: 
-        os.makedirs(os.path.join('projmap', cam))
+        os.makedirs(os.path.join(dataroot, 'projmap', cam))
     for sample in tqdm(nusc.sample): 
         sample_token = sample['token']
         map_name = scene2map[nusc.get('scene', sample['scene_token'])['name']]
         nusc_map = nusc_maps[map_name]
         for cam in cams:
             cam_token = sample['data'][cam]
-            out_path = os.path.join('projmap', cam, cam_token)
+            out_path = os.path.join(dataroot, 'projmap', cam, cam_token)
             render_map_in_image(nusc, nusc_map, sample_token = sample_token, camera_channel=cam, out_path = out_path)

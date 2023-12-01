@@ -7,6 +7,7 @@ from .kitti_dataset import KittiDataset
 from .kitti_mono_dataset import KittiMonoDataset
 from .lyft_dataset import LyftDataset
 from .nuscenes_dataset import NuScenesDataset
+from .nuscenes_dataset_map import NuScenesMapDataset
 from .nuscenes_mono_dataset import NuScenesMonoDataset
 # yapf: disable
 from .pipelines import (BackgroundPointsFilter, GlobalAlignment,
@@ -28,7 +29,8 @@ from .waymo_dataset import WaymoDataset
 
 __all__ = [
     'KittiDataset', 'KittiMonoDataset', 'build_dataloader', 'DATASETS',
-    'build_dataset', 'NuScenesDataset', 'NuScenesMonoDataset', 'LyftDataset',
+    'build_dataset', 'NuScenesDataset', 
+    'NuScenesMapDataset' 'NuScenesMonoDataset', 'LyftDataset',
     'ObjectSample', 'RandomFlip3D', 'ObjectNoise', 'GlobalRotScaleTrans',
     'PointShuffle', 'ObjectRangeFilter', 'PointsRangeFilter',
     'LoadPointsFromFile', 'S3DISSegDataset', 'S3DISDataset',
