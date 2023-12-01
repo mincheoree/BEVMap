@@ -367,7 +367,7 @@ class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
                  sequential=False, aligned=False, trans_only=True):
         super().__init__(data_config, is_train, sequential, aligned, trans_only)
     
-    def depth_transform(self,cam_depth, resize, resize_dims, crop, flip, rotate):
+    def depth_transform(self, cam_depth, resize, resize_dims, crop, flip, rotate):
         """Transform depth based on ida augmentation configuration.
 
         Args:
@@ -404,7 +404,8 @@ class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
 
         depth_coords = cam_depth[:, :2].astype(np.int16)
 
-        depth_map = np.zeros(resize_dims)
+        ## intialize depth map with -1 
+        depth_map = np.zeros(resize_dims) - 1
         valid_mask = ((depth_coords[:, 1] < resize_dims[0])
                     & (depth_coords[:, 0] < resize_dims[1])
                     & (depth_coords[:, 1] >= 0)

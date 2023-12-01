@@ -85,33 +85,11 @@ class ViewTransformerLiftSplatShoot(BaseModule):
         self.D, _, _, _ = self.frustum.shape
         self.numC_input = numC_input
         self.numC_Trans = numC_Trans
-        self.depthnet = nn.Conv2d(self.numC_input + 128, self.D + self.numC_Trans, kernel_size=1, padding=0)
+        self.depthnet = nn.Conv2d(self.numC_input, self.D + self.numC_Trans, kernel_size=1, padding=0)
         self.geom_feats = None
         self.accelerate = accelerate
         self.max_drop_point_rate = max_drop_point_rate
         self.use_bev_pool = use_bev_pool
-
-        self.map_encoder = nn.Sequential(
-            nn.Conv2d(4, 16, 3, 1, 1), 
-            nn.BatchNorm2d(16), 
-            nn.ReLU(),
-            nn.MaxPool2d(2,2,0), 
-
-            nn.Conv2d(16, 32, 3, 1, 1), 
-            nn.BatchNorm2d(32), 
-            nn.ReLU(),
-            nn.MaxPool2d(2,2,0), 
-
-            nn.Conv2d(32, 64, 3, 1, 1), 
-            nn.BatchNorm2d(64), 
-            nn.ReLU(),
-            nn.MaxPool2d(2,2,0), 
-
-            nn.Conv2d(64, 128, 3, 1, 1), 
-            nn.BatchNorm2d(128), 
-            nn.ReLU(),
-            nn.MaxPool2d(2,2,0), 
-        )
 
     def get_depth_dist(self, x):
         return x.softmax(dim=1)
@@ -274,18 +252,65 @@ class ViewTransformerLiftSplatShoot(BaseModule):
 
         return final
 
+    def forward(self, input):
+        x, rots, trans, intrins, post_rots, post_trans = input
+        B, N, C, H, W = x.shape
+        x = x.view(B * N, C, H, W)
+        x = self.depthnet(x)
+        depth = self.get_depth_dist(x[:, :self.D])
+        img_feat = x[:, self.D:(self.D + self.numC_Trans)]
+
+        # Lift
+        volume = depth.unsqueeze(1) * img_feat.unsqueeze(2)
+        volume = volume.view(B, N, self.numC_Trans, self.D, H, W)
+        volume = volume.permute(0, 1, 3, 4, 5, 2)
+
+        # Splat
+        if self.accelerate:
+            bev_feat = self.voxel_pooling_accelerated(rots, trans, intrins, post_rots, post_trans, volume)
+        else:
+            geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans)
+            bev_feat = self.voxel_pooling(geom, volume)
+        return bev_feat
+
+@NECKS.register_module()
+class ViewTransformerLiftSplatShoot_Map(ViewTransformerLiftSplatShoot):
+    def __init__(self, **kwargs):
+        super(ViewTransformerLiftSplatShoot_Map, self).__init__(**kwargs)
+        
+        self.depthnet = nn.Conv2d(self.numC_input + 128, self.D + self.numC_Trans, kernel_size=1, padding=0)
+
+        self.map_encoder = nn.Sequential(
+            nn.Conv2d(4, 16, 3, 1, 1), 
+            nn.BatchNorm2d(16), 
+            nn.ReLU(),
+            nn.MaxPool2d(2,2,0), 
+
+            nn.Conv2d(16, 32, 3, 1, 1), 
+            nn.BatchNorm2d(32), 
+            nn.ReLU(),
+            nn.MaxPool2d(2,2,0), 
+
+            nn.Conv2d(32, 64, 3, 1, 1), 
+            nn.BatchNorm2d(64), 
+            nn.ReLU(),
+            nn.MaxPool2d(2,2,0), 
+
+            nn.Conv2d(64, 128, 3, 1, 1), 
+            nn.BatchNorm2d(128), 
+            nn.ReLU(),
+            nn.MaxPool2d(2,2,0), 
+        )
+    
     def forward(self, input, map):
         x, rots, trans, intrins, post_rots, post_trans = input
         B, N, C, H, W = x.shape
         x = x.view(B * N, C, H, W)
         B1, N1, C1, H1, W1 = map.shape
+
         map = map.view(B1*N1, C1, H1, W1)
         map = self.map_encoder(map)
-
-
-        
         x = self.depthnet(torch.cat((x, map), dim = 1))
-        # x = self.depthnet(x)
         depth = self.get_depth_dist(x[:, :self.D])
         img_feat = x[:, self.D:(self.D + self.numC_Trans)]
 
@@ -302,6 +327,7 @@ class ViewTransformerLiftSplatShoot(BaseModule):
             bev_feat = self.voxel_pooling(geom, volume)
 
         return bev_feat 
+
 
 class SELikeModule(nn.Module):
     def __init__(self, in_channel=512, feat_channel=256, intrinsic_channel=33):
@@ -323,10 +349,11 @@ class SELikeModule(nn.Module):
 class ViewTransformerLSSBEVDepth(ViewTransformerLiftSplatShoot):
     def __init__(self, extra_depth_net, loss_depth_weight, se_config=dict(),
                  dcn_config=dict(bias=True), **kwargs):
-        super(ViewTransformerLSSBEVDepth, self).__init__(**kwargs)
+        super().__init__(extra_depth_net, loss_depth_weight, se_config,
+                 dcn_config, **kwargs)
         self.loss_depth_weight = loss_depth_weight
         self.extra_depthnet = builder.build_backbone(extra_depth_net)
-        self.featnet = nn.Conv2d(self.numC_input + 128,
+        self.featnet = nn.Conv2d(self.numC_input,
                                  self.numC_Trans,
                                  kernel_size=1,
                                  padding=0)
@@ -345,10 +372,56 @@ class ViewTransformerLSSBEVDepth(ViewTransformerLiftSplatShoot):
                                                    **dcn_config),
                                    nn.BatchNorm2d(extra_depth_net['num_channels'][0])
                                   ])
-        self.se = SELikeModule(self.numC_input + 128,
+        self.se = SELikeModule(self.numC_input,
                                feat_channel=extra_depth_net['num_channels'][0],
                                **se_config)
 
+    def forward(self, input):
+        x, rots, trans, intrins, post_rots, post_trans, depth_gt = input
+        B, N, C, H, W = x.shape
+        x = x.view(B * N, C, H, W)
+
+        img_feat = self.featnet(x)
+        depth_feat = x
+        cam_params = torch.cat([intrins.reshape(B*N,-1),
+                               post_rots.reshape(B*N,-1),
+                               post_trans.reshape(B*N,-1),
+                               rots.reshape(B*N,-1),
+                               trans.reshape(B*N,-1)],dim=1)
+        depth_feat = self.se(depth_feat, cam_params)
+        depth_feat = self.extra_depthnet(depth_feat)[0]
+        depth_feat = self.dcn(depth_feat)
+        depth_digit = self.depthnet(depth_feat)
+        depth_prob = self.get_depth_dist(depth_digit)
+
+        # Lift
+        volume = depth_prob.unsqueeze(1) * img_feat.unsqueeze(2)
+        volume = volume.view(B, N, self.numC_Trans, self.D, H, W)
+        volume = volume.permute(0, 1, 3, 4, 5, 2)
+
+        # Splat
+        if self.accelerate:
+            bev_feat = self.voxel_pooling_accelerated(rots, trans, intrins, post_rots, post_trans, volume)
+        else:
+            geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans)
+            bev_feat = self.voxel_pooling(geom, volume)
+        return bev_feat, depth_digit
+
+@NECKS.register_module()
+class ViewTransformerLSSBEVDepth_Map(ViewTransformerLSSBEVDepth):
+    def __init__(self, extra_depth_net, loss_depth_weight, se_config=dict(),
+                 dcn_config=dict(bias=True), **kwargs):
+        super().__init__(extra_depth_net, loss_depth_weight, se_config=dict(),
+                 dcn_config=dict(bias=True), **kwargs)
+        self.featnet = nn.Conv2d(self.numC_input + 128,
+                                 self.numC_Trans,
+                                 kernel_size=1,
+                                 padding=0)
+        
+        self.se = SELikeModule(self.numC_input + 128,
+                               feat_channel=extra_depth_net['num_channels'][0],
+                               **se_config)
+    
     def forward(self, input, map):
         x, rots, trans, intrins, post_rots, post_trans, depth_gt = input
         B, N, C, H, W = x.shape

@@ -7,13 +7,17 @@ from torch import nn
 
 from mmdet.models import DETECTORS
 from .centerpoint import CenterPoint
-from .bevdet import BEVDepth
+from .bevdet import BEVDepth_Base
 from .. import builder
 
 @DETECTORS.register_module()
 class BEVDet_Map(CenterPoint):
     def __init__(self, img_view_transformer, img_bev_encoder_backbone, img_bev_encoder_neck, **kwargs):
         super(BEVDet_Map, self).__init__(**kwargs)
+
+        self.img_view_transformer = builder.build_neck(img_view_transformer)
+        self.img_bev_encoder_backbone = builder.build_backbone(img_bev_encoder_backbone)
+        self.img_bev_encoder_neck = builder.build_neck(img_bev_encoder_neck)
 
         nhidden = 128
         norm_nc = 64
@@ -27,7 +31,24 @@ class BEVDet_Map(CenterPoint):
         )
         self.mlp_gamma = nn.Conv2d(nhidden, norm_nc, kernel_size=ks, padding=pw)
         self.mlp_beta = nn.Conv2d(nhidden, norm_nc, kernel_size=ks, padding=pw)
+    
+    def image_encoder(self,img):
+        imgs = img
+        B, N, C, imH, imW = imgs.shape
+        imgs = imgs.view(B * N, C, imH, imW)
+        x = self.img_backbone(imgs)
+        if self.with_img_neck:
+            x = self.img_neck(x)
+        _, output_dim, ouput_H, output_W = x.shape
+        x = x.view(B, N, output_dim, ouput_H, output_W)
+        return x
 
+    def bev_encoder(self, x):
+        
+        x = self.img_bev_encoder_backbone(x)
+        x = self.img_bev_encoder_neck(x)
+        return x
+        
     def spade(self, x, segmap): 
         '''
         Adopted from SPADE paper
@@ -240,6 +261,7 @@ class BEVDepth_Map(BEVDepth_Base, BEVDet_Map):
         assert self.with_pts_bbox
 
         depth_gt = img_inputs[-1]
+        ### we turn off lidar supervision because we have map
         # loss_depth = self.get_depth_loss(depth_gt, depth)
         # losses = dict(loss_depth=loss_depth)
         losses = dict()
