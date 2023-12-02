@@ -45,7 +45,7 @@ def depth_transform(cam_depth, resize, resize_dims, crop, flip, rotate):
 
         import pdb; pdb.set_trace()
         H, W = resize_dims
-        H, W = 900/H, 1600/W
+    
         cam_depth[:, :2] = cam_depth[:, :2] * resize
         cam_depth[:, 0] -= crop[0]
         cam_depth[:, 1] -= crop[1]

@@ -52,7 +52,6 @@ We provide codes for generating map projections and BEV map mask for every sampl
 ```
 python tools/mapdata/generate_projmap.py 
 python tools/mapdata/generate_projdepth.py 
-
 ```
 
 ### BEV Mask Generation 
@@ -69,7 +68,7 @@ BEV Map on Ego Pose             |  BEV Map on LiDAR
 
 ## Train 
 ```
-bash tools/dist_train.sh 
+bash tools/dist_train.sh 2 
 ```
 ## Inference 
 ```
@@ -81,8 +80,8 @@ bash tools/dist_test.sh
 |--------|----------|---------|--------|-------------|-----|-------|
 | [**BEVDet-R50**](configs/bevdet/bevdet-r50.py)       | 29.9     | 37.7    | 16.7   | 5,007  | - | -
 | [**BEVDepth-R50***](configs/bevdepth/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
-| [**BEVMap-R50(BEVDet)***](configs/bevmap/bevmap-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
-| [**BEVMap-R50(BEVDepth)***](configs/bevmap/bevmap-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVDet-R50(BEVMap)***](configs/bevmap/bevdet-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVDepth-R50(BEVMap)***](configs/bevmap/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
 
 
 ## Acknowledgement 
