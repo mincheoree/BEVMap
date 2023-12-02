@@ -233,7 +233,7 @@ class LoadMultiViewImageFromFiles_BEVDet(object):
             intrin = torch.Tensor(cam_data['cam_intrinsic'])
             rot = torch.Tensor(cam_data['sensor2lidar_rotation'])
             tran = torch.Tensor(cam_data['sensor2lidar_translation'])
-
+            
             # augmentation (resize, crop, horizontal flip, rotate)
             resize, resize_dims, crop, flip, rotate = self.sample_augmentation(H=img.height,
                                                                                W=img.width,
@@ -449,7 +449,7 @@ class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
             intrin = torch.Tensor(cam_data['cam_intrinsic'])
             rot = torch.Tensor(cam_data['sensor2lidar_rotation'])
             tran = torch.Tensor(cam_data['sensor2lidar_translation'])
-
+       
             # augmentation (resize, crop, horizontal flip, rotate)
             resize, resize_dims, crop, flip, rotate = self.sample_augmentation(H=img.height,
                                                                                W=img.width,
@@ -473,7 +473,6 @@ class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
    
         
             map_depth_augmented = self.depth_transform(depth, resize, (256, 704), crop, flip, rotate)
-
 
             # for convenience, make augmentation matrices 3x3
             post_tran = torch.zeros(3)
