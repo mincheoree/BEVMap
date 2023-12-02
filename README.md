@@ -54,6 +54,11 @@ python tools/mapdata/generate_projmap.py
 python tools/mapdata/generate_projdepth.py 
 ```
 
+#### Example of augmented projected map and corresponding map depth
+Projected Map            |  Projected Map with Map Depth
+:-------------------------:|:-------------------------:
+![im1](resources/map.png)|![im2](resources/mapdepth.png)
+
 ### BEV Mask Generation 
 ```
 python tools/mapdata/generate_bevmask.py --coord 'lidar' --category 'drivable_area'
