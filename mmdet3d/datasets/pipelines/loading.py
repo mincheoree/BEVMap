@@ -404,7 +404,7 @@ class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
 
         depth_coords = cam_depth[:, :2].astype(np.int16)
 
-        ## intialize depth map with -1 
+        ## intialize depth map with '-1' 
         depth_map = np.zeros(resize_dims) - 1
         valid_mask = ((depth_coords[:, 1] < resize_dims[0])
                     & (depth_coords[:, 0] < resize_dims[1])
@@ -482,7 +482,8 @@ class LoadMultiViewImageFromFiles_BEVMap(LoadMultiViewImageFromFiles_BEVDet):
 
             imgs.append(self.normalize_img(img))
             maps.append(self.normalize_img(map))
-            
+
+            ### depth normalization
             map_depth.append(map_depth_augmented/51.2)
 
             if self.sequential:

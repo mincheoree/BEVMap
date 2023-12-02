@@ -6,8 +6,6 @@ import os
 from nuscenes.utils.data_classes import Box
 from nuscenes import NuScenes
 from nuscenes.map_expansion.map_api import NuScenesMap
-# from nuscenes.map_expansion import arcline_path_utils
-# from nuscenes.map_expansion.bitmap import BitMap
 from pyquaternion import Quaternion
 from nuscenes.utils.geometry_utils import transform_matrix
 import argparse
@@ -19,9 +17,18 @@ def gen_dx_bx(xbound, ybound, zbound):
     nx = np.array([(row[1] - row[0]) / row[2] for row in [xbound, ybound, zbound]])
     return dx, bx, nx
 
-def get_binmap(nusc, nusc_maps, rec, layer_names, coord_type):
-        bx = np.array([-49.75,-49.75])
-        dx = np.array([0.5,0.5])
+def get_binmap(
+        nusc, 
+        nusc_maps, 
+        rec, 
+        layer_names, 
+        coord_type, 
+        xbound = [-51.2, 51.2, 0.128],
+        ybound=[-51.2, 51.2, 0.128],
+        zbound=[-10.0, 10.0, 20.0],
+    ):
+
+        dx, bx, _ = gen_dx_bx(xbound, ybound, zbound)
         sample = nusc.get('sample_data', rec['data']['LIDAR_TOP'])
         egopose = nusc.get('ego_pose',  sample['ego_pose_token'])
         center = np.array([egopose["translation"][0], egopose["translation"][1]])
@@ -30,7 +37,7 @@ def get_binmap(nusc, nusc_maps, rec, layer_names, coord_type):
         cs_center = np.array([cs_record["translation"][0], cs_record["translation"][1], 0])
 
         nmap = nusc_maps[map_name]
-        stretch = 50.0
+        stretch = 51.2
 
         box_coords = (center[0] - stretch, 
                       center[1] - stretch, 
@@ -41,7 +48,9 @@ def get_binmap(nusc, nusc_maps, rec, layer_names, coord_type):
         # polygons
         records_in_patch = nmap.get_records_in_patch(box_coords,layer_names=layer_names,  mode='intersect')
         for layer_name in layer_names:
-            mask = np.zeros((200, 200))
+            mask_height = int((ybound[1] - ybound[0]) / ybound[2])
+            mask_width = int((xbound[1] - xbound[0]) / xbound[2])
+            mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
             for token in records_in_patch[layer_name]:
                 poly_record = nmap.get(layer_name, token)
         
