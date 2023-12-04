@@ -181,7 +181,7 @@ def render_map_in_image(nusc,
 if __name__ == '__main__': 
     parser = argparse.ArgumentParser(description="arg parser")
     args = parser.parse_args()
-    dataroot = 'data/mini/'
+    dataroot = 'data/nuscenes/'
     nusc_maps = get_nusc_maps(dataroot)
     nusc = NuScenes(version='v1.0-mini', dataroot=dataroot, verbose=True)
     scene2map = {}

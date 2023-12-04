@@ -116,9 +116,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     category = args.category 
     coord = args.coord
-    dataroot = 'data/mini/'
+    dataroot = 'data/nuscenes/'
     nusc_maps = get_nusc_maps(dataroot)
-    nusc = NuScenes(version='v1.0-mini', dataroot=dataroot, verbose=True)
+    nusc = NuScenes(version='v1.0-trainval', dataroot=dataroot, verbose=True)
     scene2map = {}
     for rec in nusc.scene: 
         log = nusc.get('log', rec['log_token'])

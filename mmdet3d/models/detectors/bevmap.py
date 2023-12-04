@@ -120,7 +120,6 @@ class BEVDet_Map(CenterPoint):
         Returns:
             dict: Losses of different branches.
         """
-        # depth = self.filter_depth(depth)
         
         map = torch.cat((proj, torch.unsqueeze(depth, dim = 2)), dim = 2)
         img_feats, pts_feats = self.extract_feat(
@@ -148,13 +147,9 @@ class BEVDet_Map(CenterPoint):
                 all images in the batch. Defaults to None.
         """
        
-        # depth = self.filter_depth(depth[0])
       
         map = torch.cat((proj[0], torch.unsqueeze(depth[0], dim = 2)), dim = 2)
         
-    
-        # map = torch.cat((proj[0], torch.unsqueeze(depth[0], dim = 2)), dim = 2)
-
 
         for var, name in [(img_inputs, 'img_inputs'), (img_metas, 'img_metas')]:
             if not isinstance(var, list):

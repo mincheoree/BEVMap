@@ -84,9 +84,9 @@ bash tools/dist_test.sh
 | Method            | mAP      | NDS     | FPS    |Mem (MB) |   Model | Log
 |--------|----------|---------|--------|-------------|-----|-------|
 | [**BEVDet-R50**](configs/bevdet/bevdet-r50.py)       | 29.9     | 37.7    | 16.7   | 5,007  | - | -
-| [**BEVDepth-R50***](configs/bevdepth/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
-| [**BEVDet-R50(BEVMap)***](configs/bevmap/bevdet-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
-| [**BEVDepth-R50(BEVMap)***](configs/bevmap/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVDepth-R50**](configs/bevdepth/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVDet-R50(BEVMap)**](configs/bevmap/bevdet-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
+| [**BEVDepth-R50(BEVMap)**](configs/bevmap/bevdepth-r50.py) | 33.3     | 40.6    | 15.7   |5,185| - | -
 
 
 ## Acknowledgement 
