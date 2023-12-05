@@ -349,8 +349,7 @@ class SELikeModule(nn.Module):
 class ViewTransformerLSSBEVDepth(ViewTransformerLiftSplatShoot):
     def __init__(self, extra_depth_net, loss_depth_weight, se_config=dict(),
                  dcn_config=dict(bias=True), **kwargs):
-        super().__init__(extra_depth_net, loss_depth_weight, se_config,
-                 dcn_config, **kwargs)
+        super(ViewTransformerLSSBEVDepth, self).__init__(**kwargs)
         self.loss_depth_weight = loss_depth_weight
         self.extra_depthnet = builder.build_backbone(extra_depth_net)
         self.featnet = nn.Conv2d(self.numC_input,
@@ -408,15 +407,32 @@ class ViewTransformerLSSBEVDepth(ViewTransformerLiftSplatShoot):
         return bev_feat, depth_digit
 
 @NECKS.register_module()
-class ViewTransformerLSSBEVDepth_Map(ViewTransformerLSSBEVDepth):
+class ViewTransformerLSSBEVDepth_Map(ViewTransformerLiftSplatShoot_Map):
     def __init__(self, extra_depth_net, loss_depth_weight, se_config=dict(),
                  dcn_config=dict(bias=True), **kwargs):
-        super().__init__(extra_depth_net, loss_depth_weight, se_config=dict(),
-                 dcn_config=dict(bias=True), **kwargs)
+        super(ViewTransformerLSSBEVDepth_Map, self).__init__(**kwargs)
+        self.loss_depth_weight = loss_depth_weight
+        self.extra_depthnet = builder.build_backbone(extra_depth_net)
         self.featnet = nn.Conv2d(self.numC_input + 128,
                                  self.numC_Trans,
                                  kernel_size=1,
                                  padding=0)
+        self.depthnet = nn.Conv2d(extra_depth_net['num_channels'][0],
+                                  self.D,
+                                  kernel_size=1,
+                                  padding=0)
+        self.dcn = nn.Sequential(*[build_conv_layer(dict(type='DCNv2',
+                                                        deform_groups=1),
+                                                   extra_depth_net['num_channels'][0],
+                                                   extra_depth_net['num_channels'][0],
+                                                   kernel_size=3,
+                                                   stride=1,
+                                                   padding=1,
+                                                   dilation=1,
+                                                   **dcn_config),
+                                   nn.BatchNorm2d(extra_depth_net['num_channels'][0])
+                                  ])
+        
         
         self.se = SELikeModule(self.numC_input + 128,
                                feat_channel=extra_depth_net['num_channels'][0],

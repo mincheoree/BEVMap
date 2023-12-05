@@ -159,7 +159,7 @@ train_pipeline = [
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectNameFilter', classes=class_names),
     dict(type='DefaultFormatBundle3D', class_names=class_names),
-    dict(type='Collect3D', keys=['img_inputs', 'gt_bboxes_3d', 'gt_labels_3d', 'proj', 'depth', 'bev'],
+    dict(type='Collect3D', keys=['img_inputs', 'gt_bboxes_3d', 'gt_labels_3d'],
          meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',
                             'depth2img', 'cam2img', 'pad_shape',
                             'scale_factor', 'flip', 'pcd_horizontal_flip',
@@ -188,7 +188,7 @@ test_pipeline = [
                 type='DefaultFormatBundle3D',
                 class_names=class_names,
                 with_label=False),
-            dict(type='Collect3D', keys=['points','img_inputs', 'proj', 'depth', 'bev'])
+            dict(type='Collect3D', keys=['points','img_inputs'])
         ])
 ]
 # construct a pipeline for data and gt loading in show function
@@ -199,14 +199,14 @@ eval_pipeline = [
         type='DefaultFormatBundle3D',
         class_names=class_names,
         with_label=False),
-    dict(type='Collect3D', keys=['img_inputs', 'proj', 'depth', 'bev'])
+    dict(type='Collect3D', keys=['img_inputs'])
 ]
 
 input_modality = dict(
     use_lidar=False,
     use_camera=True,
     use_radar=False,
-    use_map=True,
+    use_map=False,
     use_external=False)
 
 data = dict(

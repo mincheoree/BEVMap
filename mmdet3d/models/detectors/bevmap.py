@@ -57,7 +57,7 @@ class BEVDet_Map(CenterPoint):
         normalized = self.param_free_norm(x)
 
         # Part 2. produce scaling and bias conditioned on semantic map
-        
+    
         segmap = F.interpolate(segmap, size=x.size()[2:], mode='nearest')
         actv = self.mlp_shared(segmap)
         gamma = self.mlp_gamma(actv)
@@ -201,9 +201,48 @@ class BEVDet_Map(CenterPoint):
             result_dict['pts_bbox'] = pts_bbox
         return bbox_list
 
+class BEVDepth_Base_Map():
+    def extract_feat(self, points, img, img_metas, map, bev):
+        """Extract features from images and points."""
+        img_feats, depth = self.extract_img_feat(img, img_metas, map, bev)
+        pts_feats = None
+        return (img_feats, pts_feats, depth)
+
+
+    def simple_test(self, points, img_metas, img=None, map= None, bev= None, rescale=False):
+        """Test function without augmentaiton."""
+        img_feats, _, _ = self.extract_feat(points, img=img, img_metas=img_metas, map = map, bev = bev)
+        bbox_list = [dict() for _ in range(len(img_metas))]
+        bbox_pts = self.simple_test_pts(img_feats, img_metas, rescale=rescale)
+        for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
+            result_dict['pts_bbox'] = pts_bbox
+        return bbox_list
+
+    @force_fp32()
+    def get_depth_loss(self, depth_gt, depth):
+        B, N, H, W = depth_gt.shape
+        loss_weight = (~(depth_gt == 0)).reshape(B, N, 1, H, W).expand(B, N,
+                                                                       self.img_view_transformer.D,
+                                                                       H, W)
+        depth_gt = (depth_gt - self.img_view_transformer.grid_config['dbound'][0])\
+                   /self.img_view_transformer.grid_config['dbound'][2]
+        depth_gt = torch.clip(torch.floor(depth_gt), 0,
+                              self.img_view_transformer.D).to(torch.long)
+        depth_gt_logit = F.one_hot(depth_gt.reshape(-1),
+                                   num_classes=self.img_view_transformer.D)
+        depth_gt_logit = depth_gt_logit.reshape(B, N, H, W,
+                                                self.img_view_transformer.D).permute(
+            0, 1, 4, 2, 3).to(torch.float32)
+        depth = depth.sigmoid().view(B, N, self.img_view_transformer.D, H, W)
+
+        loss_depth = F.binary_cross_entropy(depth, depth_gt_logit,
+                                            weight=loss_weight)
+        loss_depth = self.img_view_transformer.loss_depth_weight * loss_depth
+        return loss_depth
+
 
 @DETECTORS.register_module()
-class BEVDepth_Map(BEVDepth_Base, BEVDet_Map):
+class BEVDepth_Map(BEVDepth_Base_Map, BEVDet_Map):
     def extract_img_feat(self, img, img_metas, map, bev):
         """Extract features of images."""
         x = self.image_encoder(img[0])

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CONFIG='configs/bevmap/bevdet-r50.py'
+CONFIG='configs/bevmap/bevdepth-r50.py'
 GPUS=2
 PORT=${PORT:-29500}
 
