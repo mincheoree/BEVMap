@@ -29,6 +29,8 @@ def get_binmap(
     ):
 
         dx, bx, _ = gen_dx_bx(xbound, ybound, zbound)
+        bx = bx[:2]
+        dx = dx[:2]
         sample = nusc.get('sample_data', rec['data']['LIDAR_TOP'])
         egopose = nusc.get('ego_pose',  sample['ego_pose_token'])
         center = np.array([egopose["translation"][0], egopose["translation"][1]])
@@ -144,7 +146,7 @@ if __name__ == '__main__':
             index = sample['data']['LIDAR_TOP']
             single_mask = map[i] * 255
             cv2.imwrite(os.path.join(dataroot, 'bevmap', f'{str(index)}.png'), single_mask.astype(np.uint8))
-         
+
 
         
 

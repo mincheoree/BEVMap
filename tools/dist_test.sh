@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-CONFIG=$1
-CHECKPOINT=$2
-GPUS=$3
+CONFIG='configs/bevmap/bevdet-r50.py'
+CHECKPOINT='work_dirs/bevmapdet_reproduce/epoch_24.pth'
+GPUS=2
 PORT=${PORT:-29600}
 
 PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \

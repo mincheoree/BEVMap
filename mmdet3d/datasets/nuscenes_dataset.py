@@ -136,6 +136,7 @@ class NuScenesDataset(Custom3DDataset):
                  test_adj_ids=None):
         self.load_interval = load_interval
         self.use_valid_flag = use_valid_flag
+     
         super().__init__(
             data_root=data_root,
             ann_file=ann_file,

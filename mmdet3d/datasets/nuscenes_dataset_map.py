@@ -81,7 +81,7 @@ class NuScenesMapDataset(NuScenesDataset):
     CLASSES = ('car', 'truck', 'trailer', 'bus', 'construction_vehicle',
                'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone',
                'barrier')
-    
+        
     def _format_bbox(self, results, jsonfile_prefix=None):
         """Convert the results to the standard format.
 
@@ -224,6 +224,7 @@ class NuScenesMapDataset(NuScenesDataset):
 
                     proj_paths[cam_type] = proj 
                     depth_paths[cam_type] = depth
+
                 bev_path = os.path.join(self.data_root, 'bevmap', f'{fbev}.png')
                 input_dict.update(dict(
                     proj = proj_paths,

@@ -156,6 +156,7 @@ def main():
         set_random_seed(args.seed, deterministic=args.deterministic)
 
     # build the dataloader
+
     print(cfg.data.val)
     dataset = build_dataset(cfg.data.val)
     data_loader = build_dataloader(
