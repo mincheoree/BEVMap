@@ -430,8 +430,10 @@ class BEVDepth(BEVDepth_Base, BEVDet):
         assert self.with_pts_bbox
 
         depth_gt = img_inputs[-1]
-        loss_depth = self.get_depth_loss(depth_gt, depth)
-        losses = dict(loss_depth=loss_depth)
+        ### depth loss turned off
+        # loss_depth = self.get_depth_loss(depth_gt, depth)
+        # losses = dict(loss_depth=loss_depth)
+        losses = dict()
         losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
                                             gt_labels_3d, img_metas,
                                             gt_bboxes_ignore)
