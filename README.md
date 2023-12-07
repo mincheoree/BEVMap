@@ -85,8 +85,8 @@ bash tools/dist_test.sh $CONFIG_FILE $CHECKPOINT $GPUS
 |--------           |--------|--------|----------|---------|-----|-------|
 | [**BEVDet-R50**](configs/bevdet/bevdet-r50.py)|256x704|24ep| 29.9     | 37.7       | - | -
 | [**BEVDet-R50(BEVMap)**](configs/bevmap/bevdet-r50.py) |256x704|24ep| 30.4     | 39.4      | - | -
-| [**BEVDepth-R50***](configs/bevdepth/bevdepth-r50.py) |256x704|24ep| 33.3     | 40.6      | - | -
-| [**BEVDepth-R50(BEVMap)***](configs/bevmap/bevdepth-r50.py) |256x704|24ep| 33.3     | 40.6     | - | -
+| [**BEVDepth-R50***](configs/bevdepth/bevdepth-r50.py) |256x704|24ep| 32.68     | 39.26      | - | -
+| [**BEVDepth-R50(BEVMap)***](configs/bevmap/bevdepth-r50.py) |256x704|24ep| 31.88     | 39.77     | - | -
 | [**BEVDepth-R50**](configs/bevdepth/bevdepth-r50.py) |256x704|24ep| 33.3     | 40.6      | - | -
 
 * *trained without lidar supervision
