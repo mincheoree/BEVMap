@@ -140,7 +140,6 @@ data/sunrgbd/OFFICIAL_SUNRGBD/
 # map 
 projmap/
 projdepth/
-bevmap/
 misc/
 bevmapdet_reproduce/
 # Waymo evaluation
