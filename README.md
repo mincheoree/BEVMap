@@ -1,5 +1,8 @@
 # BEVMap - Map Aware BEV Modeling for 3D Perception
 
+<h4 align="center">This is the official repository of the paper <a href="https://openaccess.thecvf.com/content/WACV2024/papers/Chang_BEVMap_Map-Aware_BEV_Modeling_for_3D_Perception_WACV_2024_paper.pdf">BEVMap: Map Aware BEV Modeling for 3D Perception</a>.</h4>
+<h5 align="center"><em>Mincheol Chang, Seokha Moon, Reza Mahjourian, and Jinkyu Kim</em></h5>
+
 ## Prerequisites
 
 ### Installation
